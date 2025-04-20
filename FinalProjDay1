@@ -1,0 +1,70 @@
+# Load your dataset into a Pandas DataFrame
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+
+df = pd.read_csv("./final proj/twitchdata-update.csv")
+
+# Choose columns as features
+features = [
+    'Watch time(Minutes)',    # Total viewership
+    'Average viewers',        # Engagement level
+    'Peak viewers',           # Viral potential 
+    'Stream time(minutes)',   # Content volume
+    'Partnered',              # Verification status
+    'Views gained'            # Channel exposure
+]
+
+# Perform preprocessing
+X = df[features].copy()
+X['Partnered'] = X['Partnered'].astype(int)  # Convert boolean to numeric
+
+# Add engineered feature
+X['viewer_retention'] = X['Watch time(Minutes)'] / (X['Stream time(minutes)'] * 60)  # Watch hours per stream hour
+
+# Remove original time features to avoid redundancy
+X = X.drop(['Stream time(minutes)', 'Watch time(Minutes)'], axis=1)
+
+# Dimensions of feature set
+print("Feature Set Dimensions (Rows, Columns):")
+print(X.shape)  # Expected: (1000, 5)
+
+# Choose label
+y = df['Followers gained']
+
+# Label dimensions
+print("\nLabel Dimensions (Rows):")
+print(y.shape)  # Expected: (1000,)
+
+# Descriptive statistics
+print("\nFeature Statistics:")
+print(X.describe())
+
+print("\nLabel Statistics:")
+print(y.describe())
+
+# Visualize distributions
+plt.figure(figsize=(15,10))
+for i, col in enumerate(X.columns):
+    plt.subplot(2,3,i+1)
+    sns.histplot(X[col], kde=True)
+    plt.title(col)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(8,5))
+sns.histplot(y, kde=True, bins=30)
+plt.title('Followers Gained Distribution')
+plt.show()
+
+# Feature-label correlations
+print("\nCorrelation with Followers Gained:")
+print(X.corrwith(y).sort_values(ascending=False))
+
+# Feature-feature correlations
+plt.figure(figsize=(10,8))
+corr_matrix = X.corr()
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", mask=np.triu(corr_matrix))
+plt.title("Feature Correlation Matrix")
+plt.show()

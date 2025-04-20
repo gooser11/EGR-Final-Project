@@ -1,0 +1,160 @@
+# TODO Add any other modules you need here 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold
+from sklearn import linear_model
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+
+########
+# TODO REPLACE THIS SECTION WITH CODE TO LOAD YOUR DATASET INTO A PANDAS DATAFRAME
+# Load Twitch dataset
+df = pd.read_csv("./final proj/twitchdata-update.csv")
+
+# Select features and label
+features = ['Watch time(Minutes)', 'Average viewers', 'Partnered']
+data = df[features].copy()
+data['Partnered'] = data['Partnered'].astype(int)  # Convert boolean to numeric
+labels = df['Followers gained']
+
+# Handle missing values
+data = data.dropna()
+labels = labels[data.index]
+
+print(data.head())  # print out the first 5 examples
+print(labels.head())  # print the first 5 labels
+
+################################################################
+######## BE VERY CAREFUL ABOUT CHANGING ANY CODE BELOW THIS LINE
+################################################################
+
+X = data
+y = np.array(labels)
+
+# remove nan (empty) values in the labels 
+ynan = np.isnan(y)
+not_ynan = [not y for y in ynan]  # flip truth values for masking
+X = X[not_ynan]
+y = y[not_ynan]
+X.reset_index(drop=True, inplace=True)
+
+# split into 5 folds 
+kf = KFold(n_splits=5)
+
+beta = []
+RMSE_train = []
+RMSE_test = []
+R2_train = []
+R2_test = [] 
+
+for i, (train_index, test_index) in enumerate(kf.split(X)):
+    # define the training and testing sets 
+    xTrain = X.loc[train_index,:]
+    xTest = X.loc[test_index,:]
+    yTrain = y[train_index]
+    yTest = y[test_index]
+
+    # replace nans in x with median from x_train 
+    med_val = xTrain.median()
+    xTrain = xTrain.fillna(med_val)
+    xTest = xTest.fillna(med_val)
+
+    # standardize
+    scaler = StandardScaler()
+    xTrain = pd.DataFrame(scaler.fit_transform(xTrain), columns=xTrain.columns)
+    xTest = pd.DataFrame(scaler.transform(xTest), columns=xTest.columns)
+
+    # Create linear regression object
+    regr = linear_model.LinearRegression()
+
+    # Train the model using the training sets
+    regr.fit(xTrain, yTrain)
+
+    y_pred_train = regr.predict(xTrain)
+    y_pred_test = regr.predict(xTest)
+
+    # Create scatter plot
+    plt.scatter(yTest, y_pred_test)
+    plt.xlabel('True Followers Gained')
+    plt.ylabel('Predicted Followers Gained')
+    plt.savefig('y_pred_vs_y_true.png')
+
+    # save the regression coefficients (beta)
+    beta.append(regr.coef_)
+
+    # save the root mean squared error (RMSE)
+    this_rmse_train = mean_squared_error(yTrain, y_pred_train)**0.5 
+    this_rmse_test = mean_squared_error(yTest, y_pred_test)**0.5 
+    RMSE_train.append(this_rmse_train)
+    RMSE_test.append(this_rmse_test)
+
+    # The coefficient of determination (R2)
+    R2_train.append(r2_score(yTrain, y_pred_train))
+    R2_test.append(r2_score(yTest, y_pred_test))
+
+# Print results
+print("\nRegression coefficients (beta) for each fold: ")
+for i, b in enumerate(beta):
+    print(f"Fold {i+1}: {b}")
+
+print("\nAverage RMSE across folds:")
+print(f"Training: {np.mean(RMSE_train):,.0f} ± {np.std(RMSE_train):,.0f}")
+print(f"Testing: {np.mean(RMSE_test):,.0f} ± {np.std(RMSE_test):,.0f}")
+
+print("\nAverage R2 across folds:")
+print(f"Training: {np.mean(R2_train):.3f} ± {np.std(R2_train):.3f}")
+print(f"Testing: {np.mean(R2_test):.3f} ± {np.std(R2_test):.3f}")
+
+# Feature importance analysis
+avg_coefs = np.mean(beta, axis=0)
+feature_importance = pd.DataFrame({
+    'Feature': X.columns,
+    'Average Coefficient': avg_coefs,
+    'Absolute Importance': np.abs(avg_coefs)
+}).sort_values('Absolute Importance', ascending=False)
+
+print("\nFeature Importance:")
+print(feature_importance[['Feature', 'Average Coefficient']].to_string(index=False))
+
+# Plot performance across folds
+plt.figure(figsize=(12, 5))
+plt.subplot(121)
+plt.scatter(range(1,6), RMSE_train, color="black", label='Train')
+plt.scatter(range(1,6), RMSE_test, color="blue", label='Test')
+plt.xticks((1,2,3,4,5))
+plt.xlabel('Fold number')
+plt.ylabel('RMSE')
+plt.legend()
+
+plt.subplot(122)
+plt.scatter(range(1,6), R2_train, color="black", label='Train')
+plt.scatter(range(1,6), R2_test, color="blue", label='Test')
+plt.xticks((1,2,3,4,5))
+plt.xlabel('Fold number')
+plt.ylabel('R²')
+plt.legend()
+
+plt.savefig('ml_results.png')
+
+# Additional plot: Actual vs Predicted for all folds
+plt.figure(figsize=(8, 6))
+all_y_test = []
+all_y_pred = []
+for i, (train_index, test_index) in enumerate(kf.split(X)):
+    xTest = X.loc[test_index,:]
+    yTest = y[test_index]
+    scaler = StandardScaler()
+    xTest = pd.DataFrame(scaler.fit_transform(xTest), columns=xTest.columns)
+    y_pred = regr.predict(xTest)
+    plt.scatter(yTest, y_pred, label=f'Fold {i+1}')
+    
+    all_y_test.extend(yTest)
+    all_y_pred.extend(y_pred)
+
+plt.plot([min(y), max(y)], [min(y), max(y)], '--k')
+plt.xlabel('Actual Followers Gained')
+plt.ylabel('Predicted Followers Gained')
+plt.title('Actual vs Predicted (All Folds)')
+plt.legend()
+plt.savefig('all_folds_prediction.png')

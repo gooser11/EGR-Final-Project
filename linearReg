@@ -6,8 +6,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
-# Load data
-df = pd.read_csv("./final proj/twitchdata-update.csv")
+########
+# TODO REPLACE THIS SECTION WITH CODE TO LOAD YOUR DATASET INTO A PANDAS DATAFRAME
+# Load Twitch dataset
+df = pd.read_csv("twitchdata-update.csv")
+
+# Select features and label
 features = ['Watch time(Minutes)', 'Average viewers', 'Partnered']
 df['Partnered'] = df['Partnered'].astype(int)
 data = df[features].dropna()

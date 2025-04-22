@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-df = pd.read_csv("./final proj/twitchdata-update.csv")
+df = pd.read_csv("twitchdata-update.csv")
 
 # Choose columns as features
 features = [

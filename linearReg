@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 ########
 # TODO REPLACE THIS SECTION WITH CODE TO LOAD YOUR DATASET INTO A PANDAS DATAFRAME
 # Load Twitch dataset
-df = pd.read_csv("./final proj/twitchdata-update.csv")
+df = pd.read_csv("twitchdata-update.csv")
 
 # Select features and label
 features = ['Watch time(Minutes)', 'Average viewers', 'Partnered']
